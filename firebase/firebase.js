@@ -4,14 +4,12 @@ import "dotenv/config";
 import { getFirestore } from "firebase/firestore";
 import dotenv from "dotenv";
 import admin from "firebase-admin";
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const serviceAccount = require("../firebase-admin-key.json");
 
 dotenv.config({
   path: `.env.${process.env.NODE_ENV}`,
 });
 
+// Configuración de Firebase para el cliente
 const firebaseConfig = {
   apiKey: process.env.apiKey,
   authDomain: process.env.authDomain,
@@ -22,13 +20,15 @@ const firebaseConfig = {
   measurementId: process.env.measurementId,
 };
 
-// Initialize Firebase
+// Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-// ✅ Inicializamos Admin SDK solo una vez
+// ✅ Inicializa Admin SDK solo una vez
 if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_KEY); // Parse the JSON from the environment variable
+
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
