@@ -2,11 +2,11 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import cors from "cors";
+import Admin from "./admin/Admin.js";
 import Auth from "./auth/Auth.js";
 import User from "./user/User.js";
 import Posts from "./Posts/Posts.js";
 import Notifications from "./notifications/Notifications.js";
-import Admin from "./admin/Admin.js";
 
 const app = express();
 const PORT = 8000;
