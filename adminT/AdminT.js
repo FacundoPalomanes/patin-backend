@@ -8,9 +8,9 @@ import {
   setNewAdmin
 } from "../firebase/admin/admin.js";
 
-const Admin = express.Router();
+const AdminT = express.Router();
 
-Admin.get("/getPosibleUsers", verifyToken, async (req, res) => {
+AdminT.get("/getPosibleUsers", verifyToken, async (_req, res) => {
   try {
     const users = await getPotentialUsers();
     res.status(200).json(users);
@@ -20,9 +20,9 @@ Admin.get("/getPosibleUsers", verifyToken, async (req, res) => {
   }
 });
 
-Admin.post("/acceptUser", verifyToken, async (req, res) => {
+AdminT.post("/acceptUser", verifyToken, async (req, res) => {
   try {
-    const { userId, category } = req.body; // 👈 leemos category opcionalmente
+    const { userId, category } = req.body; 
     const token = req.cookies?.user;
 
     if (!token)
@@ -30,7 +30,7 @@ Admin.post("/acceptUser", verifyToken, async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.jwt_decoding);
 
-    await acceptUser(decoded.id, userId, category); // 👈 se lo pasamos si existe
+    await acceptUser(decoded.id, userId, category); 
 
     res.status(200).json({ message: "Usuario aceptado con exito" });
   } catch (error) {
@@ -39,7 +39,7 @@ Admin.post("/acceptUser", verifyToken, async (req, res) => {
   }
 });
 
-Admin.get("/getUsersPossibleAdmins", verifyToken, async (req, res) => {
+AdminT.get("/getUsersPossibleAdmins", verifyToken, async (req, res) => {
   try {
     const token = req.cookies?.user;
 
@@ -62,7 +62,7 @@ Admin.get("/getUsersPossibleAdmins", verifyToken, async (req, res) => {
   }
 });
 
-Admin.post("/newAdmin", verifyToken, async (req, res) => {
+AdminT.post("/newAdmin", verifyToken, async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -84,4 +84,4 @@ Admin.post("/newAdmin", verifyToken, async (req, res) => {
   }
 });
 
-export default Admin;
+export default AdminT;

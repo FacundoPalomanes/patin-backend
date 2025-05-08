@@ -2,7 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import cors from "cors";
-import Admin from "./admin/Admin.js";
+import AdminT from "./adminT/AdminT.js";
 import Auth from "./auth/Auth.js";
 import User from "./user/User.js";
 import Posts from "./Posts/Posts.js";
@@ -32,7 +32,7 @@ app.use('/auth', Auth);
 app.use('/user', User);
 app.use('/posts', Posts);
 app.use('/notifications', Notifications);
-app.use('/admin', Admin);
+app.use('/admin', AdminT);
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

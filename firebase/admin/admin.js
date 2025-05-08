@@ -63,7 +63,7 @@ export async function acceptUser(myId, userId, category) {
     const updatedUserData = {
       ...userData,
       photoURL: newPhotoURL,
-      ...(category && { categoria: category }) // 👈 renombrás aquí
+      ...(category && { categoria: category })
     };
 
     // Paso 4: Copiar a la colección "users"
@@ -93,7 +93,7 @@ export async function getUsersPossibleAdmins(currentUserId) {
 
     const users = querySnapshot.docs
       .map((doc) => doc.data())
-      .filter((data) => data.admin === false) // solo los que tienen admin: false
+      .filter((data) => data.admin === false) 
       .map((data) => ({
         id: data.id,
         name: data.name,
