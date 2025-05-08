@@ -3,6 +3,10 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import cors from "cors";
 import Auth from "./auth/auth.js";
+import User from "./user/User.js";
+import Posts from "./Posts/Posts.js";
+import Notifications from "./notifications/Notifications.js";
+import Admin from "./admin/admin.js";
 
 const app = express();
 const PORT = 8000;
@@ -22,7 +26,13 @@ app.use(
 
 app.use(cookieParser()); // function to make cookies accessible in req.cookies
 
-app.use('/auth', Auth)
+app.use(express.json());
+
+app.use('/auth', Auth);
+app.use('/user', User);
+app.use('/posts', Posts);
+app.use('/notifications', Notifications);
+app.use('/admin', Admin);
 
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

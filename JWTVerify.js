@@ -9,7 +9,7 @@ export function verifyToken (req, res, next) {
       .json({ message: "Acceso denegado, no se proporcionó el token." });
   }
 
-  jwt.verify(token, 'secret', (err, decoded) => {
+  jwt.verify(token, process.env.jwt_decoding, (err, decoded) => {
     if (err) {
       return res.status(403).json({ message: "Token inválido o expirado." });
     }

@@ -10,7 +10,7 @@ import {
 } from "../firebase/auth/auth.js";
 import multer from "multer";
 import { verifyToken } from "../JWTVerify.js";
-
+import serializeCookie from "../serializeCookie.js";
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -26,31 +26,18 @@ Auth.post("/login", upload.none(), async (req, res) => {
   try {
     const user = await logIn(email, password);
 
-    const userDocs = await logInGetUserDB(user.uid)
+    const userDocs = await logInGetUserDB(user.uid);
 
     // JWT Serialize for cookie
-    const token = jwt.sign(
-      {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // expires in 7 days
-        id: user.uid,
-        isVerified: user.emailVerified,
-      },
-      "secret"
-    );
 
-    const serialized = serialize("user", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict", // solo acepta la token del mismo sitio esto tendria q cambiarlo al hacerlo hosting en nodejs
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-      path: "/",
-    });
+    const serialized = await serializeCookie(user.uid, user.emailVerified, userDocs.isFinalUser)
 
     res.setHeader("Set-Cookie", serialized);
     return res.json({
       message: "login Successfully",
       isVerified: user.emailVerified,
       user: userDocs,
+      status: userDocs.isFinalUser
     });
   } catch (error) {
     console.log(error);
@@ -58,26 +45,29 @@ Auth.post("/login", upload.none(), async (req, res) => {
   }
 });
 
+// DONE
 Auth.post("/register", upload.single("uploadPhoto"), async (req, res) => {
   const {
     name,
+    surname,
     email,
     password,
     phoneNumber,
     fechaNacimiento,
-    categoria,
     dni,
+    responsibleName,
+    responsiblePhone,
   } = req.body;
   const file = req.file;
 
   if (
     !name ||
+    !surname ||
     !email ||
     !password ||
     !phoneNumber ||
     !file ||
     !fechaNacimiento ||
-    !categoria ||
     !dni
   )
     return res.status(401).json({ error: "Please fill all fields" });
@@ -85,12 +75,14 @@ Auth.post("/register", upload.single("uploadPhoto"), async (req, res) => {
   try {
     const user = await addUserToDB(
       name,
+      surname,
       email,
       password,
       phoneNumber,
       fechaNacimiento,
-      categoria,
-      dni
+      dni,
+      responsibleName,
+      responsiblePhone
     );
 
     if (!user)
@@ -100,45 +92,13 @@ Auth.post("/register", upload.single("uploadPhoto"), async (req, res) => {
 
     await addImageToDB(file, user);
 
-    const token = jwt.sign(
-      {
-        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
-        id: user.uid,
-        isVerified: user.emailVerified,
-      },
-      "secret"
-    );
-
-    const serialized = serialize("user", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-      path: "/",
-    });
+    const serialized = await serializeCookie(user.uid, user.emailVerified, false);
 
     res.setHeader("Set-Cookie", serialized);
     return res.status(200).json({ user: user });
   } catch (error) {
-    console.log("Hubo un error creando el usuario: ", error);
+    console.error("Hubo un error creando el usuario: ", error);
     res.status(400).json({ error: "Error creando el usuario" });
-  }
-});
-
-Auth.get("/cookiesProfile", (req, res) => {
-  const userCookies = req.cookies.user;
-  if (!userCookies) return res.status(401).json({ error: "no token" });
-
-  try {
-    const user = jwt.verify(userCookies, "secret");
-
-    return res.json({
-      token: userCookies,
-      id: user.id,
-      isVerified: user.isVerified,
-    });
-  } catch (error) {
-    return res.status(401).json({ error: "Invalid Token" });
   }
 });
 
@@ -149,32 +109,21 @@ Auth.get("/waitingVerify", verifyToken, async (req, res) => {
     if (!token)
       return res.status(401).json({ message: "Token no proporcionado" });
 
-    // Validar el token
-    const decoded = jwt.verify(token, "secret");
+    const decoded = jwt.verify(token, process.env.jwt_decoding);
     const status = await verifyEmail(decoded.id);
-    if (status) {
-      const userDocs = await logInGetUserDB(decoded.id)
-      const newToken = jwt.sign(
-        {
-          exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // 7 días
-          id: decoded.id,
-          isVerified: true,
-        },
-        "secret"
-      );
 
-      // Serializamos la nueva cookie
-      const serialized = serialize("user", newToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 60 * 60 * 24 * 7,
-        path: "/",
-      });
+    if (status) {
+      const userDocs = await logInGetUserDB(decoded.id);
+
+      if (!userDocs)
+        return res.status(404).json({ message: "Usuario no encontrado" });
+
+      const serialized = await serializeCookie(decoded.id, true, userDocs.isFinalUser);
 
       res.setHeader("Set-Cookie", serialized);
-      return res.status(200).json({ verified: true, user: userDocs });
+      return res.status(200).json({ verified: true, user: userDocs, status: userDocs.isFinalUser });
     }
+
     return res.status(200).json({ verified: false });
   } catch (error) {
     console.error("Error verificando usuario:", error);
@@ -182,12 +131,56 @@ Auth.get("/waitingVerify", verifyToken, async (req, res) => {
   }
 });
 
-Auth.get("/logout", verifyToken, (req, res) => {
+
+
+// DONE
+Auth.get("/cookiesProfile", (req, res) => {
+  const userCookies = req.cookies.user;
+  if (!userCookies) return res.status(401).json({ error: "no token" });
+
+  try {
+    const user = jwt.verify(userCookies, process.env.jwt_decoding);
+
+    return res.json({
+      token: userCookies,
+      id: user.id,
+      isVerified: user.isVerified,
+      status: user.status,
+    });
+  } catch (error) {
+    return res.status(401).json({ error: "Invalid Token" });
+  }
+});
+
+// DONE BCAUSE this is when the user is already in the app
+Auth.get("/getUserWithCookie", async (req, res) => {
+  try {
+    const token = req.cookies?.user;
+
+    if (!token)
+      return res.status(401).json({ message: "Token no proporcionado" });
+
+    // Validar el token
+    const decoded = jwt.verify(token, process.env.jwt_decoding);
+    const userDocs = await logInGetUserDB(decoded.id);
+
+    const serialized = await serializeCookie(decoded.id, true, true);
+
+    res.setHeader("Set-Cookie", serialized);
+    return res.status(200).json({ verified: true, user: userDocs });
+  } catch (error) {
+    console.error("Error verificando usuario:", error);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+//DONE
+Auth.get("/logout", (req, res) => {
   const { user } = req.cookies;
   if (!user) return res.status(401).json({ error: "no token" });
 
   try {
-    jwt.verify(user, "secret"); // se puede extraer los valores de esto si se requiere
+    jwt.verify(user, process.env.jwt_decoding); // se puede extraer los valores de esto si se requiere
     const serialized = serialize("user", null, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

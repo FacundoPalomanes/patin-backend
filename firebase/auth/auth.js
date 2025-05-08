@@ -1,5 +1,4 @@
 import {
-  signOut,
   createUserWithEmailAndPassword,
   sendEmailVerification,
   signInWithEmailAndPassword,
@@ -18,7 +17,7 @@ export async function logIn(email, password) {
     );
     return userCredential.user;
   } catch (error) {
-    console.log(
+    console.error(
       "ha habido un error al iniciar sesion o no existe el usuario",
       error
     );
@@ -28,30 +27,38 @@ export async function logIn(email, password) {
 
 export async function logInGetUserDB(uid) {
   try {
+    // Buscar en la colección "users"
     const userRef = doc(db, "users", uid);
     const userSnapshot = await getDoc(userRef);
     if (userSnapshot.exists()) {
-      return userSnapshot.data();
-    }else{
-      return null;
+      return { ...userSnapshot.data(), isFinalUser: true };
     }
+
+    // Si no está, buscar en "potentialUsers"
+    const potentialUserRef = doc(db, "potentialUsers", uid);
+    const potentialUserSnapshot = await getDoc(potentialUserRef);
+    if (potentialUserSnapshot.exists()) {
+      return { ...potentialUserSnapshot.data(), isFinalUser: false };
+    }
+
+    // No existe en ninguna
+    return null;
   } catch (error) {
-    console.log(
-      "ha habido un error al traer el usuario de la base de datos",
-      error
-    );
+    console.error("Error al traer el usuario de la base de datos", error);
     throw error;
   }
 }
 
 export async function addUserToDB(
   name,
+  surname,
   email,
   password,
   phoneNumber,
   fechaNacimiento,
-  categoria,
-  dni
+  dni,
+  responsibleName,
+  responsiblePhone
 ) {
   try {
     const userCredential = await createUserWithEmailAndPassword(
@@ -62,22 +69,38 @@ export async function addUserToDB(
     const user = userCredential.user;
 
     await updateProfile(user, {
-      displayName: name,
+      displayName: name.concat(" ", surname),
     });
 
-    const userRef = doc(db, "users", user.uid);
+    const userRef = doc(db, "potentialUsers", user.uid);
     const userSnapshot = await getDoc(userRef);
 
     if (!userSnapshot.exists()) {
-      await setDoc(userRef, {
-        id: user.uid,
-        email: email,
-        name: name,
-        phoneNumber: phoneNumber,
-        fechaNacimiento: fechaNacimiento,
-        categoria: categoria,
-        dni: dni,
-      });
+      if (responsibleName !== undefined && responsiblePhone !== undefined) {
+        await setDoc(userRef, {
+          id: user.uid,
+          surname: surname,
+          email: email,
+          name: name,
+          phoneNumber: phoneNumber,
+          fechaNacimiento: fechaNacimiento,
+          dni: dni,
+          admin: false,
+          responsibleName: responsibleName,
+          responsiblePhone: responsiblePhone,
+        });
+      } else {
+        await setDoc(userRef, {
+          id: user.uid,
+          surname: surname,
+          email: email,
+          name: name,
+          phoneNumber: phoneNumber,
+          fechaNacimiento: fechaNacimiento,
+          dni: dni,
+          admin: false
+        });
+      }
 
       console.log(`Usuario ${user.uid} registrado correctamente.`);
       await sendEmailVerification(user);
@@ -87,7 +110,7 @@ export async function addUserToDB(
 
     return user;
   } catch (error) {
-    console.log("ha habido un error con el usuario o ya existe", error);
+    console.error("ha habido un error con el usuario o ya existe", error);
     throw error;
   }
 }
@@ -96,11 +119,12 @@ export async function addImageToDB(file, user) {
   try {
     const photoURL = await uploadToCloudinary(file.buffer, user.uid);
 
-    await updateDoc(doc(db, "users", user.uid), {
+    // Actualiza en potentialUsers, no en users
+    await updateDoc(doc(db, "potentialUsers", user.uid), {
       photoURL,
     });
 
-    // ✅ Agregá esto para setear photoURL
+    // Actualiza también el perfil de Firebase Auth (opcional)
     await updateProfile(user, {
       photoURL: photoURL,
     });
@@ -120,13 +144,5 @@ export async function verifyEmail(userId) {
   } catch (error) {
     console.error("Error tratando de verificar mail:", error);
     throw error;
-  }
-}
-
-export async function logout() {
-  try {
-    await signOut(auth);
-  } catch (err) {
-    console.log(err);
   }
 }
