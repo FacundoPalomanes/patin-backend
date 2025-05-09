@@ -184,7 +184,7 @@ Auth.get("/logout", (req, res) => {
     const serialized = serialize("user", null, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict", // secure the token
+      sameSite: "none", // secure the token
       maxAge: 0, // put the maxAge that is expiration to 0 equals the cookie should be expired
       path: "/",
     });
