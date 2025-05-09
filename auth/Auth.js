@@ -164,10 +164,10 @@ Auth.get("/getUserWithCookie", async (req, res) => {
     const decoded = jwt.verify(token, process.env.jwt_decoding);
     const userDocs = await logInGetUserDB(decoded.id);
 
-    const serialized = await serializeCookie(decoded.id, true, true);
+    const serialized = await serializeCookie(decoded.id, true, userDocs.isFinalUser);
 
     res.setHeader("Set-Cookie", serialized);
-    return res.status(200).json({ verified: true, user: userDocs });
+    return res.status(200).json({ verified: true, user: userDocs, status: userDocs.isFinalUser });
   } catch (error) {
     console.error("Error verificando usuario:", error);
     return res.status(500).json({ message: "Error interno del servidor" });
