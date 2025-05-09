@@ -183,7 +183,7 @@ Auth.get("/logout", (req, res) => {
     jwt.verify(user, process.env.jwt_decoding); // se puede extraer los valores de esto si se requiere
     const serialized = serialize("user", null, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "none", // secure the token
       maxAge: 0, // put the maxAge that is expiration to 0 equals the cookie should be expired
       path: "/",

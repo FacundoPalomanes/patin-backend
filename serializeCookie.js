@@ -14,7 +14,7 @@ export default async function serializeCookie(uid, isVerified, status) {
     );
     const serialized = serialize("user", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "none",
       maxAge: 1000 * 60 * 60 * 24 * 7,
       path: "/",
