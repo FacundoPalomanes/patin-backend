@@ -30,14 +30,20 @@ Auth.post("/login", upload.none(), async (req, res) => {
 
     // JWT Serialize for cookie
 
-    const serialized = await serializeCookie(user.uid, user.emailVerified, userDocs.isFinalUser)
+    const serialized = await serializeCookie(
+      user.uid,
+      user.emailVerified,
+      userDocs.isFinalUser
+    );
 
     res.setHeader("Set-Cookie", serialized);
+    res.setHeader("Access-Control-Allow-Origin", `${process.env.fetchUrl}`);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     return res.json({
       message: "login Successfully",
       isVerified: user.emailVerified,
       user: userDocs,
-      status: userDocs.isFinalUser
+      status: userDocs.isFinalUser,
     });
   } catch (error) {
     console.log(error);
@@ -92,9 +98,15 @@ Auth.post("/register", upload.single("uploadPhoto"), async (req, res) => {
 
     await addImageToDB(file, user);
 
-    const serialized = await serializeCookie(user.uid, user.emailVerified, false);
+    const serialized = await serializeCookie(
+      user.uid,
+      user.emailVerified,
+      false
+    );
 
     res.setHeader("Set-Cookie", serialized);
+    res.setHeader("Access-Control-Allow-Origin", `${process.env.fetchUrl}`);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     return res.status(200).json({ user: user });
   } catch (error) {
     console.error("Hubo un error creando el usuario: ", error);
@@ -118,10 +130,18 @@ Auth.get("/waitingVerify", verifyToken, async (req, res) => {
       if (!userDocs)
         return res.status(404).json({ message: "Usuario no encontrado" });
 
-      const serialized = await serializeCookie(decoded.id, true, userDocs.isFinalUser);
+      const serialized = await serializeCookie(
+        decoded.id,
+        true,
+        userDocs.isFinalUser
+      );
 
       res.setHeader("Set-Cookie", serialized);
-      return res.status(200).json({ verified: true, user: userDocs, status: userDocs.isFinalUser });
+      res.setHeader("Access-Control-Allow-Origin", `${process.env.fetchUrl}`);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      return res
+        .status(200)
+        .json({ verified: true, user: userDocs, status: userDocs.isFinalUser });
     }
 
     return res.status(200).json({ verified: false });
@@ -130,8 +150,6 @@ Auth.get("/waitingVerify", verifyToken, async (req, res) => {
     return res.status(500).json({ message: "Error interno del servidor" });
   }
 });
-
-
 
 // DONE
 Auth.get("/cookiesProfile", (req, res) => {
@@ -164,10 +182,18 @@ Auth.get("/getUserWithCookie", async (req, res) => {
     const decoded = jwt.verify(token, process.env.jwt_decoding);
     const userDocs = await logInGetUserDB(decoded.id);
 
-    const serialized = await serializeCookie(decoded.id, true, userDocs.isFinalUser);
+    const serialized = await serializeCookie(
+      decoded.id,
+      true,
+      userDocs.isFinalUser
+    );
 
     res.setHeader("Set-Cookie", serialized);
-    return res.status(200).json({ verified: true, user: userDocs, status: userDocs.isFinalUser });
+    res.setHeader("Access-Control-Allow-Origin", `${process.env.fetchUrl}`);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    return res
+      .status(200)
+      .json({ verified: true, user: userDocs, status: userDocs.isFinalUser });
   } catch (error) {
     console.error("Error verificando usuario:", error);
     return res.status(500).json({ message: "Error interno del servidor" });
@@ -189,6 +215,8 @@ Auth.get("/logout", (req, res) => {
       path: "/",
     });
     res.setHeader("Set-Cookie", serialized);
+    res.setHeader("Access-Control-Allow-Origin", `${process.env.fetchUrl}`);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     res.status(200).json("logout successfully"); // en el return se tendria q hacer q automaticamente se vaya para el login page
   } catch (error) {
     return res.status(401).json({ error: "Invalid Token" });
